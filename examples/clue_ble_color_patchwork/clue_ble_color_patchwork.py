@@ -109,7 +109,24 @@ def add_fake():
     nearby_colors.append(fake_color)
 
 
+def ble_scan():
+    print("scanning")
+    # loop over all found devices
+    for entry in ble.start_scan(AdafruitColor, minimum_rssi=-100, timeout=1):
+        # if this device is not in the list already
+        if entry.address.address_bytes not in nearby_addresses:
+            # print(entry.color)
+            # add the address and color to respective lists
+            nearby_addresses.append(entry.address.address_bytes)
+            nearby_colors.append(entry.color)
+        else:  # address was already in the list
+            # print(entry.color)
+            # update the color to currently advertised value
+            _index = nearby_addresses.index(entry.address.address_bytes)
+            nearby_colors[_index] = entry.color
+
 fill_bitmap(COLOR_OFFWHITE)
+ble_scan()
 draw_grid(GRID_SIZE_8x8)
 
 # image for color slector layout
@@ -131,28 +148,12 @@ with open("/color_select_background.bmp", "rb") as color_select_background:
                 fill_bitmap(COLOR_TRANSPARENT)
             # b button was pressed
             if cur_b and not prev_b:
-                print("scanning")
-                # loop over all found devices
-                for entry in ble.start_scan(AdafruitColor, minimum_rssi=-100, timeout=1):
-                    # if this device is not in the list already
-                    if entry.address.address_bytes not in nearby_addresses:
-                        # print(entry.color)
-                        # add the address and color to respective lists
-                        nearby_addresses.append(entry.address.address_bytes)
-                        nearby_colors.append(entry.color)
-                    else:  # address was already in the list
-                        # print(entry.color)
-                        # update the color to currently advertised value
-                        _index = nearby_addresses.index(entry.address.address_bytes)
-                        nearby_colors[_index] = entry.color
-
+                ble_scan()
                 # for i in range(19):
                 #    add_fake()
                 print("after scan found {} results".format(len(nearby_colors)))
                 # print(nearby_addresses)
-                # if there are nearby devices draw patchwork on the screen
-                if nearby_colors:
-                    draw_grid(GRID_SIZE_8x8)
+                draw_grid(GRID_SIZE_8x8)
 
         elif current_mode == MODE_COLOR_SELECT:
             # current selection preview
