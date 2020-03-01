@@ -4,7 +4,7 @@ Required Libraries:
  - adafruit_ble
  - adafruit_clue
  
-###Usage: 
+### Usage: 
 The demo has two main modes, color selection mode, and patchwork viewing mode. 
 
 ### In patchwork viewing mode:
