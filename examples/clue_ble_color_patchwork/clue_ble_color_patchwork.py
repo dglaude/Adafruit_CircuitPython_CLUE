@@ -20,7 +20,7 @@ COLOR_TRANSPARENT = 0
 COLOR_OFFWHITE = 1
 
 GRID_SIZE_8x8 = 30
-GRID_SIZE_15x15 = 16
+#GRID_SIZE_15x15 = 16
 
 current_mode = MODE_SHOW_PATCHWORK
 
@@ -45,7 +45,8 @@ advertisement.color = color_options[i]
 display = board.DISPLAY
 
 # Create a bitmap with two colors
-bitmap = displayio.Bitmap(display.width, display.height, len(color_options) + 2)
+###bitmap = displayio.Bitmap(display.width, display.height, len(color_options) + 2)
+bitmap = displayio.Bitmap(8, 8, len(color_options) + 2)
 
 # Create a two color palette
 palette = displayio.Palette(len(color_options) + 2)
@@ -58,14 +59,26 @@ for i, option in enumerate(color_options):
 # Create a TileGrid using the Bitmap and Palette
 tile_grid = displayio.TileGrid(bitmap, pixel_shader=palette)
 
+patchwork_group = displayio.Group(scale=30)
+
+patchwork_group.append(tile_grid)
+
 # Create a Group
 group = displayio.Group()
 
 # Add the TileGrid to the Group
-group.append(tile_grid)
+group.append(patchwork_group)
 
 # Add the Group to the Display
 display.show(group)
+
+##### Bitmap for colour coded thermal value
+####image_bitmap = displayio.Bitmap( 32, 24, number_of_colors )
+##### Create a TileGrid using the Bitmap and Palette
+####image_tile= displayio.TileGrid(image_bitmap, pixel_shader=palette)
+##### Create a Group that scale 32*24 to 256*192
+####image_group = displayio.Group(scale=scale_factor)
+####image_group.append(image_tile)
 
 cur_color = 0
 
@@ -81,22 +94,18 @@ def draw_grid(patch_size):
         _grid_size = (240 / patch_size)
         if i < _grid_size * _grid_size:
             _grid_loc = (int(i % _grid_size), int(i / _grid_size))
-            _screen_loc = (_grid_loc[0] * patch_size, _grid_loc[1] * patch_size)
+            _screen_loc = (_grid_loc[0], _grid_loc[1])
             print(_grid_loc)
-            print(color)
+            ###print(color)
             _drawing_color = color_options.index(color) + 2
             print(_drawing_color)
-            if bitmap[_screen_loc[0], _screen_loc[1]] != _drawing_color:
-                for x_pixels in range(_screen_loc[0], _screen_loc[0] + patch_size):
-                    for y_pixels in range(_screen_loc[1], _screen_loc[1] + patch_size):
-                        # print("drawing ({}, {})".format(x_pixels, y_pixels))
-                        bitmap[x_pixels, y_pixels] = _drawing_color
+            bitmap[_screen_loc[0], _screen_loc[1]] = _drawing_color
 
 
 def fill_bitmap(color_index):
     # fill bitmap with single color
-    for x in range(0, 240):
-        for y in range(0, 240):
+    for x in range(0, 8):
+        for y in range(0, 8):
             bitmap[x, y] = color_index
 
 
@@ -150,7 +159,7 @@ with open("/color_select_background.bmp", "rb") as color_select_background:
             # b button was pressed
             if cur_b and not prev_b:
                 ble_scan()
-                # for i in range(19):
+                #for i in range(19):
                 #    add_fake()
                 print("after scan found {} results".format(len(nearby_colors)))
                 # print(nearby_addresses)
@@ -158,9 +167,10 @@ with open("/color_select_background.bmp", "rb") as color_select_background:
 
         elif current_mode == MODE_COLOR_SELECT:
             # current selection preview
-            for x in range(83, 83 + 72):
-                for y in range(182, 182 + 56):
-                    bitmap[x, y] = cur_color + 2
+            bitmap[3, 5] = cur_color + 2
+            bitmap[3, 6] = cur_color + 2
+            bitmap[4, 5] = cur_color + 2
+            bitmap[4, 6] = cur_color + 2
             # a button was pressed
             if cur_a and not prev_a:
                 print("a button")
@@ -186,3 +196,5 @@ with open("/color_select_background.bmp", "rb") as color_select_background:
                 group.remove(bg_grid)
                 fill_bitmap(COLOR_OFFWHITE)
                 draw_grid(GRID_SIZE_8x8)
+        prev_a = cur_a
+        prev_b = cur_b
