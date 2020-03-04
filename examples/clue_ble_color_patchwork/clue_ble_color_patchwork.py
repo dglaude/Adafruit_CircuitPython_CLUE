@@ -114,16 +114,17 @@ def ble_scan():
     # loop over all found devices
     for entry in ble.start_scan(AdafruitColor, minimum_rssi=-100, timeout=1):
         # if this device is not in the list already
-        if entry.address.address_bytes not in nearby_addresses:
-            # print(entry.color)
-            # add the address and color to respective lists
-            nearby_addresses.append(entry.address.address_bytes)
-            nearby_colors.append(entry.color)
-        else:  # address was already in the list
-            # print(entry.color)
-            # update the color to currently advertised value
-            _index = nearby_addresses.index(entry.address.address_bytes)
-            nearby_colors[_index] = entry.color
+        if entry.color in color_options:
+            if entry.address.address_bytes not in nearby_addresses:
+                # print(entry.color)
+                # add the address and color to respective lists
+                nearby_addresses.append(entry.address.address_bytes)
+                nearby_colors.append(entry.color)
+            else:  # address was already in the list
+                # print(entry.color)
+                # update the color to currently advertised value
+                _index = nearby_addresses.index(entry.address.address_bytes)
+                nearby_colors[_index] = entry.color
 
 fill_bitmap(COLOR_OFFWHITE)
 ble_scan()
