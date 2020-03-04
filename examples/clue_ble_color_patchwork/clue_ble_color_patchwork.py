@@ -167,10 +167,10 @@ with open("/color_select_background.bmp", "rb") as color_select_background:
 
         elif current_mode == MODE_COLOR_SELECT:
             # current selection preview
-            bitmap[3, 5] = cur_color + 2
             bitmap[3, 6] = cur_color + 2
-            bitmap[4, 5] = cur_color + 2
+            bitmap[3, 7] = cur_color + 2
             bitmap[4, 6] = cur_color + 2
+            bitmap[4, 7] = cur_color + 2
             # a button was pressed
             if cur_a and not prev_a:
                 print("a button")
