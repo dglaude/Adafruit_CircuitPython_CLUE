@@ -16,11 +16,8 @@ from adafruit_ble.advertising.adafruit import AdafruitColor
 MODE_COLOR_SELECT = 0
 MODE_SHOW_PATCHWORK = 1
 
-COLOR_TRANSPARENT = 0
-COLOR_OFFWHITE = 1
-
-GRID_SIZE_8x8 = 30
-#GRID_SIZE_15x15 = 16
+COLOR_TRANSPARENT_INDEX = 0
+COLOR_OFFWHITE_INDEX = 1
 
 current_mode = MODE_SHOW_PATCHWORK
 
@@ -44,20 +41,52 @@ advertisement.color = color_options[i]
 
 display = board.DISPLAY
 
-# Create a bitmap with two colors
-###bitmap = displayio.Bitmap(display.width, display.height, len(color_options) + 2)
-bitmap = displayio.Bitmap(8, 8, len(color_options) + 2)
+# Create a bitmap with two colors + 64 colors for the map
+bitmap = displayio.Bitmap(8, 8, 64 + 2)
 
-# Create a two color palette
-palette = displayio.Palette(len(color_options) + 2)
-palette[0] = 0x000000
-palette[1] = 0xDFDFDF
-palette.make_transparent(0)
-for i, option in enumerate(color_options):
-    palette[i + 2] = option
+# Create a 8*8 bitmap pre-filled with 64 colors (color 0 and 1 are reserved)
+for i in range(0, 8):
+    for j in range(0, 8):
+        bitmap[i, j]=2+i+j*8
+
+# Create an empty palette that will be used in one to one mapping
+palette_mapping = displayio.Palette(64 + 2)
+
+palette_mapping[0] = 0x000000
+palette_mapping[1] = 0xDFDFDF
+
+color_select_palette = displayio.Palette(len(color_options))
+for i, color in enumerate(color_options):
+    color_select_palette[i] = color
+
+
+def make_transparent():
+    palette_mapping.make_transparent(0)
+    for i in range(0, 8):
+        for j in range(0, 8):
+            bitmap[i, j] = 0
+
+
+def make_white():
+    for i in range (2, 66):
+        palette_mapping[i] = 0xDFDFDF
+
+
+def make_palette():
+    for i, color in enumerate(nearby_colors):
+        palette_mapping[i+2] = color
+
+
+color_select_preview_bmp = displayio.Bitmap(1, 1, len(color_options))
+color_preview_group = displayio.Group(scale=30*2)
+color_preview_group.x = 240//2 - 60//2
+color_preview_group.y = 240 - (60+2)
+
+color_preview_tilegrid = displayio.TileGrid(color_select_preview_bmp, pixel_shader=color_select_palette)
+color_preview_group.append(color_preview_tilegrid)
 
 # Create a TileGrid using the Bitmap and Palette
-tile_grid = displayio.TileGrid(bitmap, pixel_shader=palette)
+tile_grid = displayio.TileGrid(bitmap, pixel_shader=palette_mapping)
 
 patchwork_group = displayio.Group(scale=30)
 
@@ -72,14 +101,6 @@ group.append(patchwork_group)
 # Add the Group to the Display
 display.show(group)
 
-##### Bitmap for colour coded thermal value
-####image_bitmap = displayio.Bitmap( 32, 24, number_of_colors )
-##### Create a TileGrid using the Bitmap and Palette
-####image_tile= displayio.TileGrid(image_bitmap, pixel_shader=palette)
-##### Create a Group that scale 32*24 to 256*192
-####image_group = displayio.Group(scale=scale_factor)
-####image_group.append(image_tile)
-
 cur_color = 0
 
 prev_b = clue.button_b
@@ -89,24 +110,12 @@ nearby_addresses = ["myself"]
 nearby_colors = [color_options[cur_color]]
 
 
-def draw_grid(patch_size):
+def draw_grid():
     for i, color in enumerate(nearby_colors):
-        _grid_size = (240 / patch_size)
-        if i < _grid_size * _grid_size:
-            _grid_loc = (int(i % _grid_size), int(i / _grid_size))
-            _screen_loc = (_grid_loc[0], _grid_loc[1])
-            print(_grid_loc)
-            ###print(color)
-            _drawing_color = color_options.index(color) + 2
-            print(_drawing_color)
-            bitmap[_screen_loc[0], _screen_loc[1]] = _drawing_color
-
-
-def fill_bitmap(color_index):
-    # fill bitmap with single color
-    for x in range(0, 8):
-        for y in range(0, 8):
-            bitmap[x, y] = color_index
+        if i < 64:
+            palette_mapping[i+2] = color & 0xFFFFFF ### Mask 0xFFFFFF to avoid invalid color.
+            print(i)
+            print(color)
 
 
 def add_fake():
@@ -124,20 +133,22 @@ def ble_scan():
     for entry in ble.start_scan(AdafruitColor, minimum_rssi=-100, timeout=1):
         # if this device is not in the list already
         if entry.color in color_options:
-            if entry.address.address_bytes not in nearby_addresses:
-                # print(entry.color)
-                # add the address and color to respective lists
-                nearby_addresses.append(entry.address.address_bytes)
-                nearby_colors.append(entry.color)
-            else:  # address was already in the list
-                # print(entry.color)
-                # update the color to currently advertised value
-                _index = nearby_addresses.index(entry.address.address_bytes)
-                nearby_colors[_index] = entry.color
+            print("new color")
+        if entry.address.address_bytes not in nearby_addresses:
+            # print(entry.color)
+            # add the address and color to respective lists
+            nearby_addresses.append(entry.address.address_bytes)
+            nearby_colors.append(entry.color)
+        else:  # address was already in the list
+            # print(entry.color)
+            # update the color to currently advertised value
+            _index = nearby_addresses.index(entry.address.address_bytes)
+            nearby_colors[_index] = entry.color
 
-fill_bitmap(COLOR_OFFWHITE)
+
+make_white()
 ble_scan()
-draw_grid(GRID_SIZE_8x8)
+draw_grid()
 
 # image for color slector layout
 with open("/color_select_background.bmp", "rb") as color_select_background:
@@ -153,24 +164,24 @@ with open("/color_select_background.bmp", "rb") as color_select_background:
             if cur_a and not prev_a:
                 current_mode = MODE_COLOR_SELECT
                 # insert color select background
-                group.insert(0, bg_grid)
-                # make front bitmap transparent by setting pixels to 0
-                fill_bitmap(COLOR_TRANSPARENT)
+                group.append(bg_grid)
+                group.append(color_preview_group)
+                # make front bitmap transparent by setting palette color to transparent
+                # make_transparent()
+
             # b button was pressed
             if cur_b and not prev_b:
                 ble_scan()
-                #for i in range(19):
+                # for i in range(19):
                 #    add_fake()
                 print("after scan found {} results".format(len(nearby_colors)))
                 # print(nearby_addresses)
-                draw_grid(GRID_SIZE_8x8)
+                draw_grid()
 
         elif current_mode == MODE_COLOR_SELECT:
             # current selection preview
-            bitmap[3, 6] = cur_color + 2
-            bitmap[3, 7] = cur_color + 2
-            bitmap[4, 6] = cur_color + 2
-            bitmap[4, 7] = cur_color + 2
+            color_select_preview_bmp[0, 0] = cur_color
+
             # a button was pressed
             if cur_a and not prev_a:
                 print("a button")
@@ -179,6 +190,7 @@ with open("/color_select_background.bmp", "rb") as color_select_background:
                 # reset to 0 if it's too big
                 if cur_color >= len(color_options):
                     cur_color = 0
+                print(cur_color)
             # b button was pressed
             if cur_b and not prev_b:
                 print("b button")
@@ -194,7 +206,8 @@ with open("/color_select_background.bmp", "rb") as color_select_background:
                 current_mode = MODE_SHOW_PATCHWORK
                 # remove color select background
                 group.remove(bg_grid)
-                fill_bitmap(COLOR_OFFWHITE)
-                draw_grid(GRID_SIZE_8x8)
+                group.remove(color_preview_group)
+                make_white()
+                draw_grid()
         prev_a = cur_a
         prev_b = cur_b
