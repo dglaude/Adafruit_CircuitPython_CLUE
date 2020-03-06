@@ -47,13 +47,13 @@ bitmap = displayio.Bitmap(8, 8, 64 + 2)
 # Create a 8*8 bitmap pre-filled with 64 colors (color 0 and 1 are reserved)
 for i in range(0, 8):
     for j in range(0, 8):
-        bitmap[i, j]=2+i+j*8
+        bitmap[i, j] = 2+i+j*8
 
 # Create an empty palette that will be used in one to one mapping
 palette_mapping = displayio.Palette(64 + 2)
 
 palette_mapping[0] = 0x000000
-palette_mapping[1] = 0xDFDFDF
+palette_mapping[1] = 0xFFFFFF
 
 color_select_palette = displayio.Palette(len(color_options))
 for i, color in enumerate(color_options):
@@ -69,7 +69,7 @@ def make_transparent():
 
 def make_white():
     for i in range (2, 66):
-        palette_mapping[i] = 0xDFDFDF
+        palette_mapping[i] = 0xFFFFFF
 
 
 def make_palette():

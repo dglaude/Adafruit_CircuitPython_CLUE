@@ -56,7 +56,8 @@ for i in range(0, 8):
 palette_mapping = displayio.Palette(64 + 2)
 
 palette_mapping[0] = 0x000000
-palette_mapping[1] = 0xDFDFDF
+# palette_mapping[1] = 0xDFDFDF
+palette_mapping[1] = 0xFFFFFF
 
 color_select_palette = displayio.Palette(len(color_options))
 for i, color in enumerate(color_options):
@@ -72,7 +73,7 @@ def make_transparent():
 
 def make_white():
     for i in range (2, 66):
-        palette_mapping[i] = 0xDFDFDF
+        palette_mapping[i] = 0xFFFFFF
 
 
 def make_palette():
@@ -154,7 +155,7 @@ ble_scan()
 draw_grid()
 
 # image for color slector layout
-with open("/color_select_background.bmp", "rb") as color_select_background:
+with open("/cpb_color_select_background.bmp", "rb") as color_select_background:
     odb = displayio.OnDiskBitmap(color_select_background)
     # TileGrid for the color select background. We will insert and remove this from the
     # main group as needed.
