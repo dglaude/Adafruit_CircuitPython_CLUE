@@ -19,6 +19,8 @@ MODE_SHOW_PATCHWORK = 1
 COLOR_TRANSPARENT_INDEX = 0
 COLOR_OFFWHITE_INDEX = 1
 
+PROXIMITY_LIMIT = 100
+
 current_mode = MODE_SHOW_PATCHWORK
 
 # The color pickers will cycle through this list with buttons A and B.
@@ -35,9 +37,9 @@ color_options = [0xEE0000,
 
 ble = BLERadio()
 
-i = 0
 advertisement = AdafruitColor()
-advertisement.color = color_options[i]
+advertisement.color = color_options[0]
+clue.pixel.fill(color_options[0])
 
 display = board.DISPLAY
 
@@ -146,6 +148,16 @@ def ble_scan():
             nearby_colors[_index] = entry.color
 
 
+def change_advertisement(color):
+    ble.stop_advertising()
+    advertisement.color = color
+    ble.start_advertising(advertisement)
+    # set NeoPixel to selected advertised
+    clue.pixel.fill(color)
+    # update top left self patch
+    nearby_colors[0] = color
+
+
 make_white()
 ble_scan()
 draw_grid()
@@ -178,6 +190,15 @@ with open("/color_select_background.bmp", "rb") as color_select_background:
                 # print(nearby_addresses)
                 draw_grid()
 
+            if clue.proximity >= PROXIMITY_LIMIT:
+                clue.white_leds = True
+                while clue.proximity >= PROXIMITY_LIMIT:
+                    r, g, b, w = clue.color
+                    clue.pixel.fill(((r>>8)&0xFF, (g>>8)&0xFF, (b>>8)&0xFF))
+                    change_advertisement( ((r&0xFF00)<<8) + (g&0xFF00) + ((b>>8)&0xFF) )
+                    time.sleep(0.1)
+                clue.white_leds = False
+
         elif current_mode == MODE_COLOR_SELECT:
             # current selection preview
             color_select_preview_bmp[0, 0] = cur_color
@@ -195,12 +216,7 @@ with open("/color_select_background.bmp", "rb") as color_select_background:
             if cur_b and not prev_b:
                 print("b button")
                 # advertise new color selection
-                ble.stop_advertising()
-                advertisement.color = color_options[cur_color]
-                ble.start_advertising(advertisement)
-
-                # update top left self patch
-                nearby_colors[0] = color_options[cur_color]
+                change_advertisement(color_options[cur_color])
 
                 # go back to patchwork mode
                 current_mode = MODE_SHOW_PATCHWORK
